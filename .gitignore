@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+env/
+.env
+.env.*
+!.env.example
+.venv-broken/
+
+# Jupyter
+.ipynb_checkpoints/
+**/.ipynb_checkpoints/
+
+# macOS
+.DS_Store
+
+# Local caches
+**/__pycache__/
+.matplotlib/
+
+# Raw and generated data
+data/raw/**
+!data/raw/fred_series_config.yaml
+data/processed/**
+
+# Generated figures
+data/figures/**
+decision_problem/figures/**
+decision_problem/*.png
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+*.bak
+*.swp
+
+# IDEs
+.vscode/
+.idea/
