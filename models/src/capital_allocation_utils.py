@@ -111,11 +111,12 @@ def load_and_align_data(
     df = df.sort_values(date_col).reset_index(drop=True)
 
     # Forecasting setup: x_t -> c_{t+horizon}.
+    df["target_date"] = df[date_col].shift(-horizon)
     df["target_chargeoff_next"] = df[target_col].shift(-horizon)
     df = df.dropna(subset=["target_chargeoff_next"]).reset_index(drop=True)
 
     if feature_cols is None:
-        exclude = {date_col, target_col, "target_chargeoff_next"}
+        exclude = {date_col, target_col, "target_date", "target_chargeoff_next"}
         feature_cols = [c for c in df.columns if c not in exclude]
     else:
         feature_cols = list(feature_cols)

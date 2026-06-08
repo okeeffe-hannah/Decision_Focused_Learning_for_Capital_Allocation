@@ -134,6 +134,9 @@ def train_blackbox_model(
     model_type: str,
     model_cfg: ModelConfig,
     cap_cfg: CapitalConfig,
+    return_history: False,
+    print_history: bool=False,
+    print_every = 100,
 ) -> BlackBoxAllocator:
     """
     Train x -> alpha_hat directly by maximising realised utility.
@@ -171,9 +174,30 @@ def train_blackbox_model(
     y_val_t = torch.tensor(y_val, dtype=torch.float32)
     k_val_t = torch.tensor(k_val, dtype=torch.float32)
 
+
+
+    alpha_oracle_val = np.array([
+        optimise_oracle_alpha(float(c), cap_cfg) for c in y_val
+    ])
+
+    oracle_utility_val = np.array([
+        realised_utility(float(a), float(c), cap_cfg)
+        for a, c in zip(alpha_oracle_val, y_val)
+])
     best_state = None
     best_val = float("inf")
     stale_epochs = 0
+
+    history = []
+
+    alpha_oracle_val = np.array([
+        optimise_oracle_alpha(float(c), cap_cfg) for c in y_val
+    ])
+
+    oracle_utility_val = np.array([
+        realised_utility(float(a), float(c), cap_cfg)
+        for a, c in zip(alpha_oracle_val, y_val)
+    ])
 
     for _epoch in range(model_cfg.epochs):
         model.train()
@@ -189,6 +213,38 @@ def train_blackbox_model(
         with torch.no_grad():
             alpha_val = model(x_val_t)
             val_loss = -realised_utility_torch(alpha_val, y_val_t, k_val_t, cap_cfg).mean().item()
+            alpha_val_np = alpha_val.detach().cpu().numpy()
+
+        utility_val_np = np.array([
+            realised_utility(float(a), float(c), cap_cfg)
+            for a, c in zip(alpha_val_np, y_val)
+        ])
+
+        val_regret = oracle_utility_val - utility_val_np
+
+        epoch_record = {
+            "epoch": _epoch + 1,
+            "model": model_type,
+            "train_loss": float(loss.item()),
+            "val_loss": float(val_loss),
+            "val_mean_regret": float(np.mean(val_regret)),
+            "val_median_regret": float(np.median(val_regret)),
+            "val_max_regret": float(np.max(val_regret)),
+            "val_mean_alpha": float(np.mean(alpha_val_np)),
+            "val_mean_oracle_alpha": float(np.mean(alpha_oracle_val)),
+        }
+
+        history.append(epoch_record)
+
+        if print_history and ((_epoch + 1) % print_every == 0 or _epoch == 0):
+            print(
+                f"    {model_type:6s} epoch {_epoch + 1:4d} | "
+                f"val loss {val_loss:.6f} | "
+                f"mean regret {np.mean(val_regret):.6f} | "
+                f"median regret {np.median(val_regret):.6f} | "
+                f"max regret {np.max(val_regret):.6f} | "
+                f"mean alpha {np.mean(alpha_val_np):.4f}"
+            )
 
         if val_loss < best_val - 1e-12:
             best_val = val_loss
@@ -200,10 +256,17 @@ def train_blackbox_model(
         if stale_epochs >= model_cfg.patience:
             break
 
+
+ 
     if best_state is not None:
         model.load_state_dict(best_state)
-    return model
 
+
+   
+    if return_history:
+        return model, pd.DataFrame(history)
+
+    return model
 
 def predict_alpha(model: BlackBoxAllocator, x: np.ndarray) -> np.ndarray:
     model.eval()
@@ -235,7 +298,8 @@ def evaluate_alpha_predictions(y_true: np.ndarray, alpha_hat: np.ndarray, cap_cf
 
 
 def build_blackbox_prediction_frame(
-    dates: pd.Series,
+    feature_dates: pd.Series,
+    target_dates: pd.Series,    
     y_true: np.ndarray,
     alpha_hat: np.ndarray,
     model_name: str,
@@ -249,7 +313,8 @@ def build_blackbox_prediction_frame(
 
     return pd.DataFrame(
         {
-            "date": dates.to_numpy(),
+            "feature_date": feature_dates.to_numpy(),
+            "target_date": target_dates.to_numpy(),            
             "model": model_name,
             "eval_mode": eval_mode,
             "realised_chargeoff": y_true,
@@ -299,7 +364,8 @@ def run_holdout(
 
         outputs.append(
             build_blackbox_prediction_frame(
-                dates=test_df[date_col],
+                feature_dates=test_df[date_col],
+                target_dates=test_df["target_date"],
                 y_true=y_test,
                 alpha_hat=alpha_test,
                 model_name=model_type,
@@ -318,6 +384,7 @@ def run_expanding_window(
     initial_train_frac: float,
     model_cfg: ModelConfig,
     cap_cfg: CapitalConfig,
+    return_history: False,
 ) -> pd.DataFrame:
     """
     Expanding-window evaluation.
@@ -338,6 +405,7 @@ def run_expanding_window(
         raise ValueError("Not enough observations for expanding-window evaluation.")
 
     rows = []
+    history_rows = []
     total_steps = len(df) - start_idx
     print(f"Initial train observations: {start_idx} | Expanding-window test observations: {total_steps}")
 
@@ -354,6 +422,8 @@ def run_expanding_window(
         if step == 1 or step == total_steps or step % 10 == 0:
             print(f"  expanding step {step}/{total_steps}: train through index {test_idx - 1}, test index {test_idx}")
 
+
+
         for model_type in ["linear", "mlp"]:
             # Change seed slightly by step so MLP reinitialisations are reproducible but not identical across windows.
             step_cfg = ModelConfig(
@@ -366,12 +436,41 @@ def run_expanding_window(
                 val_frac=model_cfg.val_frac,
                 seed=model_cfg.seed + step,
             )
-            model = train_blackbox_model(x_train, y_train, model_type, step_cfg, cap_cfg)
-            alpha_hat = predict_alpha(model, x_test)
+            if return_history:
+                model, history = train_blackbox_model(
+                    x_train,
+                    y_train,
+                    model_type,
+                    step_cfg,
+                    cap_cfg,
+                    return_history=True,
+                    print_history=(step == 1 or step % 10 == 0 or step == total_steps),
+                    print_every=100,
+                )
 
+                history = history.copy()
+                history["expanding_step"] = step
+                history["feature_date"] = test_df[date_col].iloc[0]
+                history["target_date"] = test_df["target_date"].iloc[0]
+                history_rows.append(history)
+
+            else:
+                model = train_blackbox_model(
+                    x_train,
+                    y_train,
+                    model_type,
+                    step_cfg,
+                    cap_cfg,
+                    return_history=False,
+                    print_history=(step == 1 or step % 10 == 0 or step == total_steps),
+                    print_every=100,
+                )
+            alpha_hat = predict_alpha(model, x_test)
+            
             rows.append(
                 build_blackbox_prediction_frame(
-                    dates=test_df[date_col],
+                    feature_dates=test_df[date_col],
+                    target_dates=test_df["target_date"],
                     y_true=y_test,
                     alpha_hat=alpha_hat,
                     model_name=model_type,
@@ -381,7 +480,7 @@ def run_expanding_window(
             )
 
     output = pd.concat(rows, ignore_index=True)
-
+    
     for model_type in ["linear", "mlp"]:
         sub = output[output["model"] == model_type]
         metrics = evaluate_alpha_predictions(
@@ -393,8 +492,11 @@ def run_expanding_window(
         for key, val in metrics.items():
             print(f"  {key}: {val:.8f}")
 
-    return output
+    if return_history:
+        history_output = pd.concat(history_rows, ignore_index=True)
+        return output, history_output
 
+    return output
 
 # -----------------------------------------------------------------------------
 # CLI
