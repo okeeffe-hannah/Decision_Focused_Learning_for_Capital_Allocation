@@ -57,6 +57,7 @@ from capital_allocation_utils import (
     mixture_mean,
     optimise_alpha_from_p,
     optimise_oracle_alpha,
+    realised_utility,
     regret_from_alpha,
 )
 
@@ -98,8 +99,12 @@ def train_pto_model(
     model_type: str,
     model_cfg: ModelConfig,
     cap_cfg: CapitalConfig,
-) -> PTOForecaster:
+    return_history: bool = False,
+    print_history: bool = False,
+    print_every: int = 100,
+):
     """Train x -> p_hat by minimising MSE between mu_c(p_hat) and realised charge-off."""
+
     torch.manual_seed(model_cfg.seed)
     np.random.seed(model_cfg.seed)
 
@@ -118,8 +123,18 @@ def train_pto_model(
     )
     train_loader = DataLoader(train_ds, batch_size=model_cfg.batch_size, shuffle=False)
 
-    model = PTOForecaster(input_dim=x_train.shape[1], model_type=model_type, hidden_dim=model_cfg.hidden_dim)
-    optimiser = torch.optim.AdamW(model.parameters(), lr=model_cfg.lr, weight_decay=model_cfg.weight_decay)
+    model = PTOForecaster(
+        input_dim=x_train.shape[1],
+        model_type=model_type,
+        hidden_dim=model_cfg.hidden_dim,
+    )
+
+    optimiser = torch.optim.AdamW(
+        model.parameters(),
+        lr=model_cfg.lr,
+        weight_decay=model_cfg.weight_decay,
+    )
+
     loss_fn = nn.MSELoss()
 
     x_val_t = torch.tensor(x_val, dtype=torch.float32)
@@ -129,8 +144,12 @@ def train_pto_model(
     best_val = float("inf")
     stale_epochs = 0
 
+    history = []
+
     for _epoch in range(model_cfg.epochs):
         model.train()
+
+        train_losses = []
         for xb, yb in train_loader:
             optimiser.zero_grad()
             p_hat = model(xb)
@@ -138,11 +157,86 @@ def train_pto_model(
             loss = loss_fn(mu_hat, yb)
             loss.backward()
             optimiser.step()
+            train_losses.append(loss.item())
+
+        train_loss = float(np.mean(train_losses))
 
         model.eval()
         with torch.no_grad():
             p_val = model(x_val_t)
-            val_loss = loss_fn(p_to_mu_torch(p_val, cap_cfg), y_val_t).item()
+            mu_val = p_to_mu_torch(p_val, cap_cfg)
+            val_loss = loss_fn(mu_val, y_val_t).item()
+
+        p_val_np = p_val.detach().cpu().numpy()
+        mu_val_np = np.asarray(mixture_mean(p_val_np, cap_cfg), dtype=float)
+
+        record = {
+            "epoch": _epoch + 1,
+            "model": model_type,
+            "train_loss": train_loss,
+            "val_loss": float(val_loss),
+            "val_rmse_chargeoff": float(np.sqrt(mean_squared_error(y_val, mu_val_np))),
+            "val_mae_chargeoff": float(mean_absolute_error(y_val, mu_val_np)),
+        }
+
+        do_decision_diagnostics = (
+            (_epoch == 0)
+            or ((_epoch + 1) % print_every == 0)
+            or (_epoch == model_cfg.epochs - 1)
+        )
+
+        if do_decision_diagnostics:
+            alpha_val = np.array([
+                optimise_alpha_from_p(float(p), cap_cfg) for p in p_val_np
+            ])
+
+            alpha_oracle_val = np.array([
+                optimise_oracle_alpha(float(c), cap_cfg) for c in y_val
+            ])
+
+            utility_val = np.array([
+                realised_utility(float(a), float(c), cap_cfg)
+                for a, c in zip(alpha_val, y_val)
+            ])
+
+            oracle_utility_val = np.array([
+                realised_utility(float(a), float(c), cap_cfg)
+                for a, c in zip(alpha_oracle_val, y_val)
+            ])
+
+            val_regret = oracle_utility_val - utility_val
+
+            record.update({
+                "val_mean_regret": float(np.mean(val_regret)),
+                "val_median_regret": float(np.median(val_regret)),
+                "val_max_regret": float(np.max(val_regret)),
+                "val_mean_p_hat": float(np.mean(p_val_np)),
+                "val_mean_mu_hat": float(np.mean(mu_val_np)),
+                "val_mean_alpha": float(np.mean(alpha_val)),
+                "val_mean_oracle_alpha": float(np.mean(alpha_oracle_val)),
+            })
+
+            if print_history:
+                print(
+                    f"    {model_type:6s} epoch {_epoch + 1:4d} | "
+                    f"val mse {val_loss:.8f} | "
+                    f"val regret {np.mean(val_regret):.6f} | "
+                    f"mean p {np.mean(p_val_np):.4f} | "
+                    f"mean alpha {np.mean(alpha_val):.4f}"
+                )
+
+        else:
+            record.update({
+                "val_mean_regret": np.nan,
+                "val_median_regret": np.nan,
+                "val_max_regret": np.nan,
+                "val_mean_p_hat": float(np.mean(p_val_np)),
+                "val_mean_mu_hat": float(np.mean(mu_val_np)),
+                "val_mean_alpha": np.nan,
+                "val_mean_oracle_alpha": np.nan,
+            })
+
+        history.append(record)
 
         if val_loss < best_val - 1e-12:
             best_val = val_loss
@@ -156,6 +250,10 @@ def train_pto_model(
 
     if best_state is not None:
         model.load_state_dict(best_state)
+
+    if return_history:
+        return model, pd.DataFrame(history)
+
     return model
 
 
@@ -186,25 +284,45 @@ def evaluate_predictions(y_true: np.ndarray, p_hat: np.ndarray, cap_cfg: Capital
         "mean_oracle_alpha": float(np.mean(alpha_oracle)),
     }
 
-
 def build_prediction_frame(
-    dates: pd.Series,
+    feature_dates: pd.Series,
+    target_dates: pd.Series,
     y_true: np.ndarray,
     p_hat: np.ndarray,
     model_name: str,
+    eval_mode: str,
     cap_cfg: CapitalConfig,
 ) -> pd.DataFrame:
     mu_hat = np.asarray(mixture_mean(p_hat, cap_cfg), dtype=float)
     pd_hat = annualised_pd_from_chargeoff(mu_hat, cap_cfg)
     k_hat = irb_capital_requirement(pd_hat, cap_cfg)
-    alpha_hat = np.array([optimise_alpha_from_p(float(p), cap_cfg) for p in p_hat])
-    alpha_oracle = np.array([optimise_oracle_alpha(float(c), cap_cfg) for c in y_true])
-    regrets = np.array([regret_from_alpha(float(a), float(c), cap_cfg) for a, c in zip(alpha_hat, y_true)])
+
+    alpha_hat = np.array([
+        optimise_alpha_from_p(float(p), cap_cfg) for p in p_hat
+    ])
+
+    alpha_oracle = np.array([
+        optimise_oracle_alpha(float(c), cap_cfg) for c in y_true
+    ])
+
+    utility_model = np.array([
+        realised_utility(float(a), float(c), cap_cfg)
+        for a, c in zip(alpha_hat, y_true)
+    ])
+
+    utility_oracle = np.array([
+        realised_utility(float(a), float(c), cap_cfg)
+        for a, c in zip(alpha_oracle, y_true)
+    ])
+
+    regrets = utility_oracle - utility_model
 
     return pd.DataFrame(
         {
-            "date": dates.to_numpy(),
+            "feature_date": feature_dates.to_numpy(),
+            "target_date": target_dates.to_numpy(),
             "model": model_name,
+            "eval_mode": eval_mode,
             "realised_chargeoff": y_true,
             "p_hat_stress": p_hat,
             "mu_hat_chargeoff": mu_hat,
@@ -212,10 +330,217 @@ def build_prediction_frame(
             "k_irb_hat": k_hat,
             "alpha_hat": alpha_hat,
             "alpha_oracle": alpha_oracle,
+            "realised_utility": utility_model,
+            "oracle_utility": utility_oracle,
             "regret": regrets,
         }
     )
 
+def run_holdout(
+    df: pd.DataFrame,
+    date_col: str,
+    feature_cols: list[str],
+    train_frac: float,
+    model_cfg: ModelConfig,
+    cap_cfg: CapitalConfig,
+    return_history: bool = False,
+):
+    """Train once on the first train_frac observations and test on the remainder."""
+
+    train_df, test_df = chronological_split(df, train_frac)
+
+    scaler = StandardScaler()
+    x_train = scaler.fit_transform(train_df[feature_cols].to_numpy(dtype=float))
+    x_test = scaler.transform(test_df[feature_cols].to_numpy(dtype=float))
+
+    y_train = train_df["target_chargeoff_next"].to_numpy(dtype=float)
+    y_test = test_df["target_chargeoff_next"].to_numpy(dtype=float)
+
+    outputs = []
+    histories = []
+
+    print(f"Train observations: {len(train_df)} | Test observations: {len(test_df)}")
+
+    for model_type in ["linear", "mlp"]:
+        if return_history:
+            model, history = train_pto_model(
+                x_train,
+                y_train,
+                model_type,
+                model_cfg,
+                cap_cfg,
+                return_history=True,
+                print_history=True,
+                print_every=100,
+            )
+
+            history = history.copy()
+            history["eval_mode"] = "holdout"
+            histories.append(history)
+
+        else:
+            model = train_pto_model(
+                x_train,
+                y_train,
+                model_type,
+                model_cfg,
+                cap_cfg,
+            )
+
+        p_test = predict_p(model, x_test)
+        metrics = evaluate_predictions(y_test, p_test, cap_cfg)
+
+        print(f"\n{model_type.upper()} PTO HOLDOUT")
+        for key, val in metrics.items():
+            print(f"  {key}: {val:.8f}")
+
+        outputs.append(
+            build_prediction_frame(
+                feature_dates=test_df[date_col],
+                target_dates=test_df["target_date"],
+                y_true=y_test,
+                p_hat=p_test,
+                model_name=model_type,
+                eval_mode="holdout",
+                cap_cfg=cap_cfg,
+            )
+        )
+
+    output = pd.concat(outputs, ignore_index=True)
+
+    if return_history:
+        history_output = pd.concat(histories, ignore_index=True)
+        return output, history_output
+
+    return output
+
+
+def run_expanding_window(
+    df: pd.DataFrame,
+    date_col: str,
+    feature_cols: list[str],
+    initial_train_frac: float,
+    model_cfg: ModelConfig,
+    cap_cfg: CapitalConfig,
+    return_history: bool = False,
+):
+    """
+    Expanding-window PTO evaluation.
+
+    For each t in the evaluation window:
+      1. train p_hat model on rows [0, ..., t-1]
+      2. predict p_hat for row t
+      3. optimise alpha from p_hat
+      4. evaluate regret against oracle alpha
+    """
+
+    if not (0.0 < initial_train_frac < 1.0):
+        raise ValueError("initial_train_frac must be in (0, 1).")
+
+    start_idx = int(np.floor(len(df) * initial_train_frac))
+    if start_idx < 15 or len(df) - start_idx < 5:
+        raise ValueError("Not enough observations for expanding-window evaluation.")
+
+    rows = []
+    history_rows = []
+
+    total_steps = len(df) - start_idx
+    print(f"Initial train observations: {start_idx} | Expanding-window test observations: {total_steps}")
+
+    for step, test_idx in enumerate(range(start_idx, len(df)), start=1):
+        train_df = df.iloc[:test_idx].copy()
+        test_df = df.iloc[[test_idx]].copy()
+
+        scaler = StandardScaler()
+        x_train = scaler.fit_transform(train_df[feature_cols].to_numpy(dtype=float))
+        x_test = scaler.transform(test_df[feature_cols].to_numpy(dtype=float))
+
+        y_train = train_df["target_chargeoff_next"].to_numpy(dtype=float)
+        y_test = test_df["target_chargeoff_next"].to_numpy(dtype=float)
+
+        if step == 1 or step == total_steps or step % 10 == 0:
+            print(
+                f"  expanding step {step}/{total_steps}: "
+                f"train through index {test_idx - 1}, test index {test_idx}"
+            )
+
+        for model_type in ["linear", "mlp"]:
+            step_cfg = ModelConfig(
+                hidden_dim=model_cfg.hidden_dim,
+                lr=model_cfg.lr,
+                weight_decay=model_cfg.weight_decay,
+                batch_size=model_cfg.batch_size,
+                epochs=model_cfg.epochs,
+                patience=model_cfg.patience,
+                val_frac=model_cfg.val_frac,
+                seed=model_cfg.seed + step,
+            )
+
+            if step == 1 or step % 10 == 0 or step == total_steps:
+                print(f"    fitting {model_type} PTO model...")
+            if return_history:
+                model, history = train_pto_model(
+                    x_train,
+                    y_train,
+                    model_type,
+                    step_cfg,
+                    cap_cfg,
+                    return_history=True,
+                    print_history=(step == 1 or step % 10 == 0 or step == total_steps),
+                    print_every=100,
+                )
+
+                history = history.copy()
+                history["expanding_step"] = step
+                history["feature_date"] = test_df[date_col].iloc[0]
+                history["target_date"] = test_df["target_date"].iloc[0]
+                history_rows.append(history)
+
+            else:
+                model = train_pto_model(
+                    x_train,
+                    y_train,
+                    model_type,
+                    step_cfg,
+                    cap_cfg,
+                    return_history=False,
+                    print_history=(step == 1 or step % 10 == 0 or step == total_steps),
+                    print_every=100,
+                )
+
+            p_hat = predict_p(model, x_test)
+
+            rows.append(
+                build_prediction_frame(
+                    feature_dates=test_df[date_col],
+                    target_dates=test_df["target_date"],
+                    y_true=y_test,
+                    p_hat=p_hat,
+                    model_name=model_type,
+                    eval_mode="expanding",
+                    cap_cfg=cap_cfg,
+                )
+            )
+
+    output = pd.concat(rows, ignore_index=True)
+
+    for model_type in ["linear", "mlp"]:
+        sub = output[output["model"] == model_type]
+        metrics = evaluate_predictions(
+            sub["realised_chargeoff"].to_numpy(dtype=float),
+            sub["p_hat_stress"].to_numpy(dtype=float),
+            cap_cfg,
+        )
+
+        print(f"\n{model_type.upper()} PTO EXPANDING")
+        for key, val in metrics.items():
+            print(f"  {key}: {val:.8f}")
+
+    if return_history:
+        history_output = pd.concat(history_rows, ignore_index=True)
+        return output, history_output
+
+    return output
 
 # -----------------------------------------------------------------------------
 # CLI
