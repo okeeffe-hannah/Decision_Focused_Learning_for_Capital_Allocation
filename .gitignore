@@ -33,14 +33,9 @@ env/
 .matplotlib/
 
 # Raw and generated data
-data/raw/**
 !data/raw/fred_series_config.yaml
-data/processed/**
 
 # Generated figures
-data/figures/**
-decision_problem/figures/**
-decision_problem/*.png
 
 # Logs and temporary files
 *.log
