@@ -51,7 +51,7 @@ class CapitalConfig:
 
     # Basel / objective constants
     lgd: float = 0.45
-    y_bar: float = 0.028
+    y_bar: float = 0.05
     lambda_penalty: float = 10.0
     maturity: float = 2.5
     leverage: float = 1.0
