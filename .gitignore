@@ -36,6 +36,14 @@ env/
 !data/raw/fred_series_config.yaml
 
 # Generated figures
+figures/
+
+# Generated analysis results
+**/results/
+
+# Generated simulated data
+data/simulated_pd_panel.csv
+data/simulated_pd_panel_metadata.json
 
 # Logs and temporary files
 *.log
