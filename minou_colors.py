@@ -7,4 +7,5 @@ MINOU_COLORS = {
     "sage": "#66A182",
     "navy": "#2E4057",
     "grey": "#8D96A3",
+    "purple": "#4E54AC",
 }

@@ -1,0 +1,43 @@
+{
+  "description": "Empirical quarterly PD panel (FRED macro features + net charge-off rate). Realised quarterly PD is c_q_realised / LGD; annual PD for Basel IRB is the compounded quarterly rate. There is no latent 'true' PD process to condition on (unlike the simulated panel), so only a foresight oracle is defined here - there is no Bayes oracle for the empirical panel.",
+  "constants": {
+    "LGD": 0.45,
+    "M": 2.5,
+    "K1": 1.0,
+    "ell": 10.0,
+    "Y_BAR": 0.0168,
+    "lambda_shortfall": 10.0,
+    "APPLY_PD_FLOOR": true,
+    "PD_FLOOR": 0.0003,
+    "allocation_optimisation": "continuous",
+    "alpha_bounds_min": 0.0,
+    "alpha_bounds_max": 1.0,
+    "alpha_opt_xatol": 1e-10,
+    "PD_CLIP_LOW": 1e-06,
+    "PD_CLIP_HIGH": 0.99,
+    "CHARGE_OFF_IS_PERCENT": true,
+    "CHARGE_OFF_CONVERSION": "simple",
+    "INCLUDE_CURRENT_CQ": true
+  },
+  "feature_cols": [
+    "real_gdp_growth",
+    "unemployment_rate",
+    "industrial_production",
+    "real_disposable_personal_income",
+    "cpi",
+    "house_price_index",
+    "federal_funds_rate",
+    "treasury_10y_2y_spread",
+    "vix",
+    "corporate_bond_spread",
+    "senior_loan_officer_survey",
+    "excess_bond_premium",
+    "c_q",
+    "c_q_lag1"
+  ],
+  "n_observations": 142,
+  "date_range": [
+    "1990-07-01",
+    "2025-10-01"
+  ]
+}
