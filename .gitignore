@@ -32,26 +32,28 @@ env/
 **/__pycache__/
 .matplotlib/
 
-# Raw and reusable data
-# Keep source/configuration files and checked-in datasets unless explicitly ignored.
-!data/raw/fred_series_config.yaml
-
 # Generated figures
 figures/
 
 # Generated analysis results
 **/results/
 
-# Generated simulated data
-data/simulated_pd_panel.csv
-data/simulated_pd_panel_metadata.json
-simulation/data/
+# Generated simulation panels
+dfl_for_capital_allocation/simulation/data/panels/
+dfl_for_capital_allocation/empirical/data/raw
 
 # Notebook-local generated/cache artifacts
 **/.ipynb_checkpoints/
 **/.DS_Store
+
+# Legacy local projects kept outside the final repository
 old/
 proj/
+empirical_notebook_form/
+simulation_notebook_form/
+simulation_package/
+data/
+dfl_for_capital_allocation/simulation/
 
 # Logs and temporary files
 *.log
