@@ -32,15 +32,15 @@ env/
 **/__pycache__/
 .matplotlib/
 
-# Generated figures
-figures/
 
 # Generated analysis results
 **/results/
 
 # Generated simulation panels
-dfl_for_capital_allocation/simulation/data/panels/
 dfl_for_capital_allocation/empirical/data/raw
+dfl_for_capital_allocation/empirical/figures
+
+dfl_for_capital_allocation/decision_problem/figures
 
 # Notebook-local generated/cache artifacts
 **/.ipynb_checkpoints/
@@ -53,7 +53,13 @@ empirical_notebook_form/
 simulation_notebook_form/
 simulation_package/
 data/
-dfl_for_capital_allocation/simulation/
+
+
+dfl_for_capital_allocation/simulation/notebooks
+dfl_for_capital_allocation/simulation/common
+dfl_for_capital_allocation/simulation/data_panels
+dfl_for_capital_allocation/simulation/README.md
+dfl_for_capital_allocation/simulation/figures
 
 # Logs and temporary files
 *.log
