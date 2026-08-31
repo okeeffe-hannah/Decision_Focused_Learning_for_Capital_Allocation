@@ -7,7 +7,7 @@ This project tests decision-focused learning as an approach that addresses the l
 
 The approach is evaluated in both simulation and empirical settings, assessing performance using forecasting and decision-quality metrics, as well as an audit framework aligned with regulatory requirements. It aims to evaluate if aligning learning with downstream decisions improves decision outcomes relative to alternative approaches, and what this alignment changes in terms of model behaviour and auditability.
 
-## Methods
+## Methods
 
 The project compares three approaches:
 - Predict-then-optimise (PTO)
