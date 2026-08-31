@@ -36,9 +36,40 @@ env/
 # Generated analysis results
 **/results/
 
+# Keep the aggregate metrics and baseline timeseries needed by the baseline simulation comparison. Other result files remain ignored.
+!/dfl_for_capital_allocation/simulation/results/
+!/dfl_for_capital_allocation/simulation/results/master_metrics.csv
+!/dfl_for_capital_allocation/simulation/results/pto/
+!/dfl_for_capital_allocation/simulation/results/pto/*/
+!/dfl_for_capital_allocation/simulation/results/pto/*/*/
+!/dfl_for_capital_allocation/simulation/results/blackbox/
+!/dfl_for_capital_allocation/simulation/results/blackbox/*/
+!/dfl_for_capital_allocation/simulation/results/blackbox/*/*/
+!/dfl_for_capital_allocation/simulation/results/dfl/
+!/dfl_for_capital_allocation/simulation/results/dfl/*/
+!/dfl_for_capital_allocation/simulation/results/dfl/*/*/
+
+dfl_for_capital_allocation/simulation/results/pto/*/*/*
+dfl_for_capital_allocation/simulation/results/blackbox/*/*/*
+dfl_for_capital_allocation/simulation/results/dfl/*/*/*
+!/dfl_for_capital_allocation/simulation/results/pto/*/seed*_lam10_T500_rho0p03_main/timeseries.csv
+!/dfl_for_capital_allocation/simulation/results/blackbox/*/seed*_lam10_T500_rho0p03_main/timeseries.csv
+!/dfl_for_capital_allocation/simulation/results/dfl/*/seed*_lam10_T500_rho0p03_main/timeseries.csv
+# Exclude the moving-average persistence variant from the uploaded baseline.
+dfl_for_capital_allocation/simulation/results/pto/persistence_ma4/
+
 # Generated simulation panels
 dfl_for_capital_allocation/empirical/data/raw
 dfl_for_capital_allocation/empirical/figures
+
+# Ignore generated simulation panels except the baseline panels used for initial comparison (seeds 42-46, lambda=10, T=500, rho_scale=0.03).
+dfl_for_capital_allocation/simulation/data_panels/*
+!/dfl_for_capital_allocation/simulation/data_panels/
+!/dfl_for_capital_allocation/simulation/data_panels/panel_seed42_lam10_T500_rho0p03.csv
+!/dfl_for_capital_allocation/simulation/data_panels/panel_seed43_lam10_T500_rho0p03.csv
+!/dfl_for_capital_allocation/simulation/data_panels/panel_seed44_lam10_T500_rho0p03.csv
+!/dfl_for_capital_allocation/simulation/data_panels/panel_seed45_lam10_T500_rho0p03.csv
+!/dfl_for_capital_allocation/simulation/data_panels/panel_seed46_lam10_T500_rho0p03.csv
 
 
 # Notebook-local generated/cache artifacts
@@ -56,7 +87,6 @@ data/
 
 dfl_for_capital_allocation/simulation/notebooks
 dfl_for_capital_allocation/simulation/common
-dfl_for_capital_allocation/simulation/data_panels
 dfl_for_capital_allocation/simulation/figures
 
 # Logs and temporary files
