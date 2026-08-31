@@ -4,14 +4,14 @@ This directory contains the simulation data-generating process, model
 implementations, experiment runners, evaluation notebooks, and generated
 outputs.
 
-# Quickstart: simulation
+## Quickstart: simulation
 
 From the `dfl_for_capital_allocation/simulation` directory:
 ```bash
 python run_01_generate_panels.py --seeds 42 --lambdas 10 --Ts 500 --rho-scales 0.03
 python run_02_experiment.py --seeds 42 --lambdas 10 --Ts 500 --rho-scales 0.03
-
 ```
+
 ## Layout
 
 - `common/` — shared decision, DGP, model, and I/O code

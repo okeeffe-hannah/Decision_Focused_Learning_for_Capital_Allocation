@@ -8,8 +8,8 @@ This directory contains the empirical part of the study. It prepares a quarterly
 2. `02_pto_empirical.ipynb` — runs the predict-then-optimise baseline.
 3. `03_black_box_empirical.ipynb` — runs the black-box decision model.
 4. `04_dfl_empirical.ipynb` — runs the decision-focused learning model.
-5. `05_empirical_thesis_figures.ipynb` — combines results and create thesis figures and tables.
-6. `06_empirical_regulatory_audit.ipynb` — run sthe calibration, discrimination, and stability audit analyses.
+5. `05_empirical_thesis_figures.ipynb` — combines results and creates thesis figures and tables.
+6. `06_empirical_regulatory_audit.ipynb` — runs the calibration, discrimination, and stability audit analyses.
 
 The notebooks use the shared decision and model code in `../simulation/common/`. 
 

@@ -40,7 +40,6 @@ env/
 dfl_for_capital_allocation/empirical/data/raw
 dfl_for_capital_allocation/empirical/figures
 
-dfl_for_capital_allocation/decision_problem/figures
 
 # Notebook-local generated/cache artifacts
 **/.ipynb_checkpoints/
