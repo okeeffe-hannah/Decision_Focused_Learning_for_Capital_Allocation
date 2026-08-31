@@ -58,7 +58,6 @@ data/
 dfl_for_capital_allocation/simulation/notebooks
 dfl_for_capital_allocation/simulation/common
 dfl_for_capital_allocation/simulation/data_panels
-dfl_for_capital_allocation/simulation/README.md
 dfl_for_capital_allocation/simulation/figures
 
 # Logs and temporary files
