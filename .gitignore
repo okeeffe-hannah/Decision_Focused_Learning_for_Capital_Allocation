@@ -58,6 +58,12 @@ dfl_for_capital_allocation/simulation/results/dfl/*/*/*/*
 !/dfl_for_capital_allocation/simulation/results/pto/*/seed*_lam10_T500_rho0p03_main/timeseries.csv
 !/dfl_for_capital_allocation/simulation/results/blackbox/*/seed*_lam10_T500_rho0p03_main/timeseries.csv
 !/dfl_for_capital_allocation/simulation/results/dfl/*/seed*_lam10_T500_rho0p03_main/timeseries.csv
+!/dfl_for_capital_allocation/simulation/results/pto/linear/seed*_lam10_T500_rho0p03_main/stability_linear_reference_outputs.csv
+!/dfl_for_capital_allocation/simulation/results/pto/mlp/seed*_lam10_T500_rho0p03_main/stability_mlp_reference_outputs.csv
+!/dfl_for_capital_allocation/simulation/results/dfl/linear/seed*_lam10_T500_rho0p03_main/stability_linear_reference_outputs.csv
+!/dfl_for_capital_allocation/simulation/results/dfl/mlp/seed*_lam10_T500_rho0p03_main/stability_mlp_reference_outputs.csv
+!/dfl_for_capital_allocation/simulation/results/blackbox/linear/seed*_lam10_T500_rho0p03_main/stability_linear_reference_outputs.csv
+!/dfl_for_capital_allocation/simulation/results/blackbox/mlp/seed*_lam10_T500_rho0p03_main/stability_mlp_reference_outputs.csv
 
 # Sensitivity-analysis timeseries: requested lambda, sample-length, and
 # correlation-scale grids for seeds 42-46. These patterns match only the
