@@ -134,7 +134,6 @@ data/
 
 
 dfl_for_capital_allocation/simulation/notebooks
-dfl_for_capital_allocation/simulation/common/decision.py
 dfl_for_capital_allocation/simulation/common/dfl_model.py
 dfl_for_capital_allocation/simulation/figures
 
