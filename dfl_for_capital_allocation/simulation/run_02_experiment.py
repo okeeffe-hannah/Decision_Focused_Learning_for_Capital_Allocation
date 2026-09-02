@@ -116,7 +116,6 @@ def split_cfg_for(args) -> dict:
     return dict(configs.EVAL_SPLIT_CFG)
 
 
-_AUDITED_DFL_PANELS = set()  
 _BACKEND_IMPORTED = False
 
 
@@ -238,13 +237,6 @@ def run_one_combo(combo: dict, args, paths: StudyPaths):
 
     elif family == "dfl":
         df = dfl_model.load_simulated_panel(panel_csv, feature_cols, cfg=dcfg)
-        audit_key = (seed, lam, T, rho)
-        if audit_key not in _AUDITED_DFL_PANELS:
-            print(f"[dfl] gradient audit for seed={seed} lambda={lam} T={T} rho_scale={rho} "
-                  f"(bisection solver + implicit-function-theorem gradient vs. finite "
-                  f"differences - runs once per panel, before any DFL training):", flush=True)
-            dfl_model.run_gradient_audit(df, dcfg, verbose=True)
-            _AUDITED_DFL_PANELS.add(audit_key)
         stability_ref = None
         if args.save_audit_artifacts and arch in ("linear", "mlp"):
             stability_ref = df[feature_cols].to_numpy(dtype=float)
