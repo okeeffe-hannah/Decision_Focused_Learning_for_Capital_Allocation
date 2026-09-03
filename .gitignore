@@ -106,9 +106,6 @@ dfl_for_capital_allocation/simulation/results/pto/persistence_ma4/
 dfl_for_capital_allocation/simulation/results/pto/persistence/
 !/dfl_for_capital_allocation/simulation/results/pto/persistence/seed*_lam10_T500_rho0p03_main/timeseries.csv
 
-# Generated simulation panels
-dfl_for_capital_allocation/empirical/data/raw
-dfl_for_capital_allocation/empirical/figures
 
 # Ignore generated simulation panels except the baseline panels used for initial comparison (seeds 42-46, lambda=10, T=500, rho_scale=0.03).
 dfl_for_capital_allocation/simulation/data_panels/*
@@ -131,6 +128,11 @@ empirical_notebook_form/
 simulation_notebook_form/
 simulation_package/
 data/
+
+# The empirical data used by the notebooks is source data and should be tracked.
+!/dfl_for_capital_allocation/empirical/data/
+!/dfl_for_capital_allocation/empirical/data/**
+/dfl_for_capital_allocation/empirical/data/**/.DS_Store
 
 
 dfl_for_capital_allocation/simulation/notebooks
