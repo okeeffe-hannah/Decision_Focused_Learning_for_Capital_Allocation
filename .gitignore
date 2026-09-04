@@ -135,8 +135,7 @@ data/
 /dfl_for_capital_allocation/empirical/data/**/.DS_Store
 
 
-dfl_for_capital_allocation/simulation/notebooks
-dfl_for_capital_allocation/simulation/figures
+dfl_for_capital_allocation/simulation/notebooks/experiments
 
 # Logs and temporary files
 *.log
