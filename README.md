@@ -16,7 +16,7 @@ The project compares three approaches:
 
 All three approaches use the same allocation objective and are evaluated using expanding-window experiments. The simulation experiments involve generating panels of data with varied DGP seeds, sample length, shortfall penalties and asset-correlation scale to run sensitivity analysis across the results. 
 
-## Repository structure
+## Repository Structure
 
 - `decision_problem/` — motivation and construction of the allocation problem and supporting figures
 - `empirical/` — historical-data experiments and empirical results
