@@ -24,7 +24,7 @@ All three approaches use the same allocation objective and are evaluated using e
 
 The empirical and simulation subfolders contain READMEs with more detailed file structure details.
 
-## Reproducibility
+## Reproducibility 
 
 All experiments reuse the same seeds. The baseline training and ensemble seeds are (42, 43, 44, 45, 46), and are defined in `simulation/configs.py`.
 
